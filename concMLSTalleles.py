@@ -5,7 +5,7 @@ Concatenate allele sequences of a given list of STs. It is useful for comparing 
 level and MLST-based phylogenetic construction. Currently this script does not support allele variants,
 namely, requires exact hits of query genomes to reference allele sequences.
 
-Example command line:
+Example command lines:
     python concMLSTalleles.py -p st_profiles.tsv -s ./sequence_dir -e tfa > mlstSeqs.fna
     python concMLSTalleles.py -p st_profiles_new.tsv -s ./sequence_dir -e tfa >> mlstSeqs.fna  # Append sequences
 
