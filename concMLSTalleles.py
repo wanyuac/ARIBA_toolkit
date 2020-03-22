@@ -51,6 +51,8 @@ def parse_arguments():
                         help = 'Common delimiter between the locus name and allele number in an allele name')
     parser.add_argument('-e', dest = 'e', type = str, required = False, default = 'tfa',\
                         help = 'Filename extension of input FASTA files. (tfa, fasta, fna, etc)')
+    parser.add_argument('-v', dest = 'v', action = 'store_true', required = False,\
+                        help = 'Flag this option to print sequence headers in a verbose way (with allele information)')
 
     return parser.parse_args()
 
@@ -72,8 +74,11 @@ def main():
     # Concatenate and print allele sequences of every ST of interest
     sts = list(st_prof.index)  # Row names: STs
     for st in sts:
-        seq_record = conc_seqs(st_prof.loc[st, : ], loci, db, args.d)  # Feed a row of ST profiles into the function
-        print('>%s %s\n%s' % (seq_record.id, seq_record.description, seq_record.seq))  # Print this SeqRecord
+        seq_record = conc_seqs(st_prof.loc[st, : ], loci, db, args.d, args.v)  # Feed a row of ST profiles into the function
+        if args.v:
+            print('>%s %s %s\n%s' % (seq_record.id, seq_record.name, seq_record.description, seq_record.seq))  # Print this SeqRecord
+        else:
+            print('>%s\n%s' % (seq_record.id, seq_record.seq))  # Print sequence headers in a concise manner (Compatible to SplitTree4)
     
     return
 
@@ -94,18 +99,22 @@ def import_mlst_alleles(seq_dir, loci, ext):
     return db
 
 
-def conc_seqs(pf, loci, db, delim):
+def conc_seqs(pf, loci, db, delim, verbose):
     """
     Concatenate allele sequences for a given ST.
     """
-    seq = Seq('', single_letter_alphabet)  # Stores the concatenated sequence
+    seqs = []  # A list of Seq objects
     descr = []
     for locus in loci:
         allele = locus + delim + pf[locus]  # For example, 'locus_1'.
         record = db[locus][allele]  # Record is a SeqRecord object.
-        seq = seq.join([record.seq])  # Concatenate the allele sequence
+        seqs.append(record.seq)
         descr.append(allele + '(%i)' % len(record.seq))  # locus_1(length)
-    seq_record = SeqRecord(seq, id = pf.name, name = 'ST', description = ','.join(descr))  # The name attribute will not be printed.
+    seq = Seq('', single_letter_alphabet).join(seqs)  # Concatenate allele sequences
+    if verbose:
+        seq_record = SeqRecord(seq, id = pf.name, name = str(len(seq)) + 'bp', description = ','.join(descr))
+    else:
+        seq_record = SeqRecord(seq, id = pf.name, name = '', description = '')
     
     return seq_record
 
