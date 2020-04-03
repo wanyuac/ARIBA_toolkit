@@ -27,7 +27,7 @@ Dependencies: Python v3, packages pandas (pandas.pydata.org/) and biopython.
 
 Copyright 2020 Yu Wan <wanyuac@126.com>
 Licensed under the GNU General Public Licence version 3 (GPLv3) <https://www.gnu.org/licenses/>.
-Publication: 22 Mar 2020
+Publication: 22 Mar 2020; last modification: 3 Apr 2020.
 """
 
 import os
@@ -67,12 +67,15 @@ def main():
     except:
         sys.exit("Error: cannot read ST profiles.")
     
+    sts = list(st_prof.index)  # Row names: STs
+    if (check_redundant_st(sts)):
+        sys.exit("Error: duplicated STs are found in ST profiles.")
+    
     # Import MLST allele sequences
     loci = list(st_prof.columns)
     db = import_mlst_alleles(args.s, loci, args.e)  # Read FASTA files of MLST alleles
     
     # Concatenate and print allele sequences of every ST of interest
-    sts = list(st_prof.index)  # Row names: STs
     for st in sts:
         seq_record = conc_seqs(st_prof.loc[st, : ], loci, db, args.d, args.v)  # Feed a row of ST profiles into the function
         if args.v:
@@ -117,6 +120,16 @@ def conc_seqs(pf, loci, db, delim, verbose):
         seq_record = SeqRecord(seq, id = pf.name, name = '', description = '')
     
     return seq_record
+
+
+def check_redundant_st(sts):
+    """
+    This script expects the input ST profiles (argument '-p') to not have any duplicated ST.
+    Something must be wrong if duplicates of STs exist. For example, an ST has two copies of the same
+    allele. Thus the R function considers the row of this case unique.
+    """
+    
+    return len(set(sts)) < len(sts)
 
 
 if __name__ == '__main__':
