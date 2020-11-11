@@ -99,7 +99,7 @@ process gene_detection {
     */
     script:
     """
-    ariba run --assembler spades --spades_mode wgs --assembly_cov 70 --spades_options '--only-assembler --careful' --threads 4 --assembled_threshold 0.95 --min_scaff_depth 10 --force --nucmer_min_id 90 --tmp_dir $PWD ${ariba_db} ${paired_fastq[0]} ${paired_fastq[1]} $genome
+    ariba run --assembler spades --spades_mode wgs --spades_options \"--only-assembler --careful\" --assembly_cov 70 --threads 4 --assembled_threshold 0.95 --min_scaff_depth 10 --force --nucmer_min_id 90 --tmp_dir $PWD ${ariba_db} ${paired_fastq[0]} ${paired_fastq[1]} $genome
     mv ${genome}/report.tsv ${genome}_report.tsv
     gunzip -c ${genome}/assembled_genes.fa.gz > ${genome}_genes.fna
     mv ${genome}/assembled_seqs.fa.gz ${genome}_seqs.fna.gz
