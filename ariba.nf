@@ -13,7 +13,7 @@ To run this pipeline in a screen session:
 [Declaration]
 Copyright (C) 2020 Yu Wan <wanyuac@126.com>
 Licensed under the GNU General Public License v3.0
-Publication: 1 Nov 2020; latest update: 10 Nov 2020.
+Publication: 1 Nov 2020; latest update: 11 Nov 2020.
 
 Reference:
     Martin Hunt (@martibartfast) and Anthony Underwood (@bioinformant) github.com/aunderwo/nextflow_ariba
@@ -51,19 +51,26 @@ In summary:
   - assembled_seqs.fa.gz: contigs that fully or partially match to reference sequences. Allele names and gene names
                           from the reference database are both used in sequence headers.
 */
-main_output_dir = mkdir(params.output_dir)  // Parental directory of all outputs
-report_dir = mkdir(main_output_dir + "/report")  // Key output 1: report.tsv
-gene_dir = mkdir(main_output_dir + "/gene")  // Key output 2: assembled_genes.fa.gz
-stats_dir = mkdir(main_output_dir + "/stats")  // debug.report.tsv
-log_dir = mkdir(main_output_dir + "/log")  // log.clusters.gz and version_info.txt
-contig_dir = mkdir(main_output_dir + "/contig")  // assemblies.fa.gz and assembled_seqs.fa.gz
+main_output_dir = params.output_dir  // Parental directory of all outputs
+report_dir =  main_output_dir + "/report"  // Key output 1: report.tsv
+gene_dir = main_output_dir + "/gene"  // Key output 2: assembled_genes.fa.gz
+stats_dir = main_output_dir + "/stats"  // debug.report.tsv
+log_dir = main_output_dir + "/log"  // log.clusters.gz and version_info.txt
+contig_dir = main_output_dir + "/contig"  // assemblies.fa.gz and assembled_seqs.fa.gz
+
+mkdir(params.output_dir)  // Returns true or false
+mkdir(report_dir)
+mkdir(gene_dir)
+mkdir(stats_dir)
+mkdir(log_dir)
+mkdir(contig_dir)
 
 /* Get inputs */
 read_sets = Channel.fromFilePairs(params.fastq)
 ariba_db = file(params.db_dir)
 
 /* Processes */
-process Ariba {
+process gene_detection {
     /* Grep and copy outputs of this process (independent of the output declaration blok) */
     publishDir report_dir, mode: "copy", pattern: "*_report.tsv"
     publishDir gene_dir, mode: "copy", pattern: "*_genes.fna"
@@ -74,10 +81,23 @@ process Ariba {
     input:
     set genome, file(paired_fastq) from read_sets  // Genome ID and its paired read files
 
+    /*
+    Output files must be registered in this block so publishDir can take effect, or no file
+    will be copied to output directories. These output files do not have to be sent to any
+    channel.
+    */
     output:
     file "${genome}_report.tsv" into report_channel  // Grep the file of interest using this glob string and feed it into the next process
-    
-    script:  // Runs under the working folder of the current job
+    file "${genome}_genes.fna"
+    file "${genome}_*.fna.gz"
+    file "${genome}_stats.tsv"
+    file "${genome}_log_*.*"
+
+    /*
+    Runs under the working directory of the current job. This directory differs from $PWD, the directory where
+    this Nextflow job is launched. (Try adding "echo $PWD" in the block of bash commands)
+    */
+    script:
     """
     ariba run --assembler spades --spades_mode wgs --assembly_cov 70 --spades_options '--only-assembler --careful' --threads 4 --assembled_threshold 0.95 --min_scaff_depth 10 --force --nucmer_min_id 90 --tmp_dir $PWD ${ariba_db} ${paired_fastq[0]} ${paired_fastq[1]} $genome
     mv ${genome}/report.tsv ${genome}_report.tsv
