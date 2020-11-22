@@ -1,14 +1,69 @@
-# Tools for Processing ARIBA's Outputs
+# Scripts for ARIBA-based gene detection
 
 *Yu Wan*
 
 
 
-This repository consists of helper scripts for processing outputs of [ARIBA](https://github.com/sanger-pathogens/ariba).
+This repository consists of helper scripts for submitting [ARIBA](https://github.com/sanger-pathogens/ariba) jobs or processing their outputs.
+
+<br />
+
+## 1. A Nextflow pipeline for ARIBA
+
+This pipeline submits PBS (Portable Batch System) jobs of ARIBA to a high-performance computing (HPC) cluster with a control for queue sizes. Users may also opt to run ARIBA locally (without submitting jobs to the HPC system) using this pipeline. Two Nextflow scripts implement this pipeline:
+
+- `ariba.nf`: Main Nextflow script for the pipeline;
+- `ariba.config`: Configuration file of `ariba.nf`. By default, each PBS job requests four CPUs and 16 GB RAM from the system. The same request applies to local jobs as well.
 
 
 
-## compileMLST.py
+**Dependencies**
+
+- Singularity-compatible Docker image of ARIBA
+- Nextflow v20.0 and above
+
+
+
+**Parameters**
+
+- `fastq`: A glob for read files. It must be braced by a pair of quotation marks and no square brackets should be used. Default: `"*_{1,2}.fastq.gz"`.
+- `output_dir`: Name and path for the parental directory of output files. Default: `output`.
+- `db_dir`: Name and path to access an existing ARIBA-compatible ResFinder database. Default: `resfinder`.
+- `queue_size`: Maximum number of concurrent PBS jobs submitted to the HPC system. Some computation facilities have restrictions for the queue size for fair use. Default: 10.
+
+
+
+**Example commands**
+
+```bash
+# Install ARIBA's Singularity image through Docker
+singularity pull docker://staphb/ariba  # Rename the Image file to ariba.sif
+
+# Run the ARIBA Nextflow pipeline for gene detection
+nextflow -Djava.io.tmpdir=$PWD run ariba.nf --fastq "$PWD/reads/*_{1,2}.fastq.gz" --db_dir $HOME/db/resfinder --output_dir output -c ariba.config -profile pbs --queue_size 15 -with-singularity $HOME/software/docker/ariba.sif
+```
+
+
+
+**Outputs**
+
+Five subdirectories are created under the parental output directory by the pipeline:
+
+- `/report`: `[sample]_report.tsv`
+- `/gene`: `[sample]_genes.fna`, decompressed and renamed from ARIBA's output file `assembled_genes.fa.gz`.
+- `/stats`: `[sample]_stats.tsv`, renamed from`debug.report.tsv`.
+- `/contig`: `[sample]_assemblies.fna.gz` and `[sample]_seqs.fna.gz`, renamed from output files `assemblies.fa.gz` and `assembled_seqs.fa.gz` of each sample, respectively.
+- `/log`: `[sample]_log_clusters.gz` and `[sample]_log_version.txt`, renamed from output files `log.clusters.gz` and `version_info.txt` of each sample, respectively.
+
+
+
+Users may refer to [instructions for PAMmaker](https://github.com/wanyuac/PAMmaker#ariba) for a method converting this pipeline's outputs to an allelic presence-absence matrix.
+
+<br />
+
+## 2. Processing results of MLST analysis
+
+### compileMLST.py
 
 Compile outputs (`mlst_report.tsv`, `mlst_report.details.tsv`, and `report.tsv`) from MLST analysis by ARIBA, assuming the names of ARIBA's output directories are genome names. Namely, the MLST reports should be generated with the command 
 
@@ -32,7 +87,7 @@ find ./* -maxdepth 1 -type d | python ~/ARIBA_toolkit/compileMLST.py
 
 
 
-## concMLSTalleles.py
+### concMLSTalleles.py
 
 Concatenate allele sequences of a given list of STs. It is useful for comparing STs at the nucleotide
 level and MLST-based phylogenetic construction. Currently this script does not support allele variants,
